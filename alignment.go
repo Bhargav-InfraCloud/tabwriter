@@ -21,6 +21,7 @@ type aligner interface {
 	right(cell string, width uint) []string
 	left(cell string, width uint) []string
 	full(cell string) string
+	alignFuncMap() map[alignment]alignmentFunc
 }
 
 func newAligner(colSep string) aligner {
@@ -94,4 +95,12 @@ func (a *alignmentOperator) full(cell string) string {
 	return a.columnSeperator +
 		cell +
 		a.columnSeperator
+}
+
+func (a *alignmentOperator) alignFuncMap() map[alignment]alignmentFunc {
+	return map[alignment]alignmentFunc{
+		RightAlign:  a.right,
+		LeftAlign:   a.left,
+		CenterAlign: a.center,
+	}
 }

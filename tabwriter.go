@@ -67,20 +67,41 @@ func (m *manager) EnableHeaderSeperator() TableCreator {
 }
 
 func (m *manager) Process() error {
-	var (
-		alignFunc                           alignmentFunc
-		cell                                string
-		config                              ColumnConfig
-		index                               int
-		row, paddedParts, header, seperator []string
-		maxExtraCount                       int
 
-		alignmentFuncMap = map[alignment]alignmentFunc{
-			RightAlign:  m.aligner.right,
-			LeftAlign:   m.aligner.left,
-			CenterAlign: m.aligner.center,
+	m.addHeaders()
+
+	if m.isHeaderSeperated {
+		m.addHeaderSeperator()
+	}
+
+	err := m.addRows()
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (m *manager) Print(w io.Writer) {
+	for _, row := range m.formattedSheet {
+		for _, cell := range row {
+			fmt.Fprint(w, cell)
 		}
-		extraLines = map[int][]string{}
+
+		fmt.Fprintln(w)
+	}
+}
+
+func (m *manager) addHeaders() {
+	var (
+		alignFunc           alignmentFunc
+		config              ColumnConfig
+		index               int
+		paddedParts, header []string
+		maxExtraCount       int
+
+		alignmentFuncMap = m.aligner.alignFuncMap()
+		extraLines       = map[int][]string{}
 	)
 
 	for index, config = range m.columnConfigs {
@@ -111,18 +132,36 @@ func (m *manager) Process() error {
 
 		m.formattedSheet = append(m.formattedSheet, emptySheet...)
 	}
+}
 
-	if m.isHeaderSeperated {
-		for index, config = range m.columnConfigs {
-			cell = m.aligner.full(strings.Repeat(m.headerSeperator, int(config.width())))
-			seperator = append(seperator, cell)
-		}
+func (m *manager) addHeaderSeperator() {
+	var (
+		seperator  string
+		config     ColumnConfig
+		seperators []string
+	)
 
-		m.formattedSheet = append(m.formattedSheet, seperator)
+	for _, config = range m.columnConfigs {
+		seperator = strings.Repeat(m.headerSeperator, int(config.width()))
+		seperator = m.aligner.full(seperator)
+		seperators = append(seperators, seperator)
 	}
 
-	extraLines = map[int][]string{}
-	maxExtraCount = 0
+	m.formattedSheet = append(m.formattedSheet, seperators)
+}
+
+func (m *manager) addRows() error {
+	var (
+		alignFunc        alignmentFunc
+		cell             string
+		config           ColumnConfig
+		index            int
+		row, paddedParts []string
+		maxExtraCount    int
+
+		alignmentFuncMap = m.aligner.alignFuncMap()
+		extraLines       = map[int][]string{}
+	)
 
 	for _, row = range m.rows {
 		if len(row) != len(m.columnConfigs) {
@@ -159,14 +198,4 @@ func (m *manager) Process() error {
 	}
 
 	return nil
-}
-
-func (m *manager) Print(w io.Writer) {
-	for _, row := range m.formattedSheet {
-		for _, cell := range row {
-			fmt.Fprint(w, cell)
-		}
-
-		fmt.Fprintln(w)
-	}
 }
